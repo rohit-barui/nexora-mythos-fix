@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexora Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f5f7fa; min-height: 100vh; }
+        .header { background: #1e293b; color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 1.5rem; font-weight: 600; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .stat-card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .stat-card h3 { font-size: 0.875rem; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-value { font-size: 2.5rem; font-weight: 700; color: #1e293b; }
+        .stat-value.critical { color: #dc2626; }
+        .stat-value.warning { color: #f59e0b; }
+        .stat-value.success { color: #16a34a; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .chart-card { background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .chart-card h3 { font-size: 1rem; color: #1e293b; margin-bottom: 1rem; }
+        .table-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+        .table-card h3 { padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem 1.5rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f8fafc; font-weight: 600; color: #475569; font-size: 0.875rem; }
+        tr:hover { background: #f8fafc; }
+        .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .badge-critical { background: #fef2f2; color: #dc2626; }
+        .badge-warning { background: #fffbeb; color: #f59e0b; }
+        .badge-success { background: #f0fdf4; color: #16a34a; }
+        .badge-info { background: #eff6ff; color: #2563eb; }
+        .loading { text-align: center; padding: 3rem; color: #64748b; }
+        .error { text-align: center; padding: 3rem; color: #dc2626; }
+        .refresh-btn { background: #3b82f6; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 500; }
+        .refresh-btn:hover { background: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ Nexora Dashboard</h1>
+        <button class="refresh-btn" onclick="loadAll()">Refresh</button>
+    </div>
+    <div class="container">
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card"><h3>Total Assets</h3><div class="stat-value" id="stat-assets">-</div></div>
+            <div class="stat-card"><h3>Total Vulnerabilities</h3><div class="stat-value" id="stat-vulns">-</div></div>
+            <div class="stat-card"><h3>Critical Vulnerabilities</h3><div class="stat-value critical" id="stat-critical">-</div></div>
+            <div class="stat-card"><h3>Open Vulnerabilities</h3><div class="stat-value warning" id="stat-open">-</div></div>
+            <div class="stat-card"><h3>Pending Approval</h3><div class="stat-value warning" id="stat-pending">-</div></div>
+            <div class="stat-card"><h3>Executed Plans</h3><div class="stat-value success" id="stat-executed">-</div></div>
+            <div class="stat-card"><h3>Successful Jobs</h3><div class="stat-value success" id="stat-success">-</div></div>
+            <div class="stat-card"><h3>Failed Jobs</h3><div class="stat-value critical" id="stat-failed">-</div></div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>Vulnerability Trends (30 days)</h3>
+                <canvas id="vuln-trends" height="100"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Patch Job Trends (30 days)</h3>
+                <canvas id="job-trends" height="100"></canvas>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>Risk Distribution</h3>
+                <canvas id="risk-dist" height="100"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Top Assets by Risk</h3>
+                <canvas id="top-assets" height="100"></canvas>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <h3>Recent Audit Events</h3>
+            <table id="audit-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/v1';
+
+        async function fetchJSON(url) {
+            const res = await fetch(`${API_BASE}${url}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        }
+
+        function badge(text, type) {
+            const cls = { critical: 'badge-critical', warning: 'badge-warning', success: 'badge-success', info: 'badge-info' }[type] || 'badge-info';
+            return `<span class="badge ${cls}">${text}</span>`;
+        }
+
+        async function loadStats() {
+            const data = await fetchJSON('/dashboard/stats');
+            document.getElementById('stat-assets').textContent = data.assets.total;
+            document.getElementById('stat-vulns').textContent = data.vulnerabilities.total;
+            document.getElementById('stat-critical').textContent = data.vulnerabilities.critical;
+            document.getElementById('stat-open').textContent = data.vulnerabilities.open;
+            document.getElementById('stat-pending').textContent = data.remediation_plans.pending_approval;
+            document.getElementById('stat-executed').textContent = data.remediation_plans.executed;
+            document.getElementById('stat-success').textContent = data.patch_jobs.successful;
+            document.getElementById('stat-failed').textContent = data.patch_jobs.failed + data.patch_jobs.rolled_back;
+        }
+
+        async function loadVulnTrends() {
+            const data = await fetchJSON('/dashboard/vulnerability-trends?days=30');
+            new Chart(document.getElementById('vuln-trends'), {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.date),
+                    datasets: [{ label: 'Vulnerabilities', data: data.map(d => d.count), borderColor: '#3b82f6', tension: 0.3, fill: false }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        async function loadJobTrends() {
+            const data = await fetchJSON('/dashboard/patch-job-trends?days=30');
+            const byDate = {};
+            data.forEach(d => {
+                if (!byDate[d.date]) byDate[d.date] = { SUCCESS: 0, FAILED: 0, ROLLED_BACK: 0 };
+                byDate[d.date][d.status] = (byDate[d.date][d.status] || 0) + d.count;
+            });
+            const dates = Object.keys(byDate).sort();
+            new Chart(document.getElementById('job-trends'), {
+                type: 'bar',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        { label: 'Success', data: dates.map(d => byDate[d].SUCCESS || 0), backgroundColor: '#16a34a' },
+                        { label: 'Failed', data: dates.map(d => byDate[d].FAILED || 0), backgroundColor: '#dc2626' },
+                        { label: 'Rolled Back', data: dates.map(d => byDate[d].ROLLED_BACK || 0), backgroundColor: '#f59e0b' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
+            });
+        }
+
+        async function loadRiskDist() {
+            const data = await fetchJSON('/dashboard/risk-distribution');
+            const labels = Object.keys(data).sort((a,b) => parseInt(a)-parseInt(b));
+            new Chart(document.getElementById('risk-dist'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels.map(l => `Risk ${l}`),
+                    datasets: [{ data: labels.map(l => data[l]), backgroundColor: ['#16a34a','#65a30d','#84cc16','#eab308','#f59e0b','#f97316','#fb923c','#ef4444','#dc2626','#b91c1c'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        async function loadTopAssets() {
+            const data = await fetchJSON('/dashboard/top-assets-by-risk?limit=10');
+            new Chart(document.getElementById('top-assets'), {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.hostname),
+                    datasets: [{ label: 'Total Risk', data: data.map(d => d.total_risk), backgroundColor: '#3b82f6' }]
+                },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+        }
+
+        async function loadAudit() {
+            const data = await fetchJSON('/dashboard/audit/recent?limit=20');
+            const tbody = document.querySelector('#audit-table tbody');
+            tbody.innerHTML = data.map(e => `
+                <tr>
+                    <td>${e.timestamp ? new Date(e.timestamp).toLocaleString() : '-'}</td>
+                    <td>${e.actor}</td>
+                    <td>${badge(e.action, 'info')}</td>
+                    <td>${JSON.stringify(e.payload).slice(0, 80)}...</td>
+                </tr>
+            `).join('') || '<tr><td colspan="4" style="text-align:center;color:#64748b">No audit events</td></tr>';
+        }
+
+        async function loadAll() {
+            try {
+                await Promise.all([loadStats(), loadVulnTrends(), loadJobTrends(), loadRiskDist(), loadTopAssets(), loadAudit()]);
+            } catch (e) {
+                console.error(e);
+                document.body.innerHTML = '<div class="error">Failed to load dashboard: ' + e.message + '</div>';
+            }
+        }
+
+        loadAll();
+    </script>
+</body>
+</html>
