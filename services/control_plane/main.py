@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,11 +12,23 @@ from services.control_plane.api.v1.vulnerabilities import router as vulns_router
 from services.control_plane.config import settings
 from services.control_plane.core.db import init_db
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize SQLite / PostgreSQL tables if in dev mode
+    try:
+        await init_db()
+    except Exception:
+        pass
+    yield
+
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="Governed Autonomous Vulnerability Remediation Control Plane API",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan,
 )
 
 # Set CORS
@@ -25,15 +39,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def startup_event():
-    # Initialize SQLite / PostgreSQL tables if in dev mode
-    try:
-        await init_db()
-    except Exception:
-        pass
 
 
 @app.get("/health", tags=["Health"])

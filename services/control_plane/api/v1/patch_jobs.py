@@ -6,13 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from services.audit.ledger import AuditLedger
 from services.control_plane.core.db import get_db
-from services.execution_engine.executor import PatchExecutor
 from services.models.db_models import Asset, PatchJob, RemediationPlan
 from services.models.domain_schemas import PatchJobCreate, PatchJobExecutionResult, PatchJobResponse
+from services.orchestrator.engine import OrchestrationEngine
 
 router = APIRouter(prefix="/patch-jobs", tags=["Patch Jobs"])
-executor = PatchExecutor()
+orchestrator = OrchestrationEngine()
 
 
 @router.post("", response_model=PatchJobResponse, status_code=201)
@@ -75,7 +76,7 @@ async def execute_patch_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db
     job.started_at = datetime.now(UTC).replace(tzinfo=None)
     await db.commit()
 
-    result = await executor.execute_plan(
+    result = await orchestrator.run_remediation(
         host=asset.hostname,
         os_type=asset.os_type,
         actions=actions,
@@ -95,6 +96,18 @@ async def execute_patch_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db
 
     plan.status = "EXECUTED" if job.status == "SUCCESS" else "FAILED"
     await db.commit()
+
+    await AuditLedger.log_event(
+        db,
+        actor="OrchestrationEngine",
+        action="PATCH_EXECUTED",
+        payload={
+            "job_id": str(job.job_id),
+            "plan_id": str(plan.plan_id),
+            "overall_status": job.status,
+            "snapshot_summary": result.get("snapshot_summary"),
+        },
+    )
 
     return PatchJobExecutionResult(
         job_id=job.job_id,
