@@ -1,0 +1,29 @@
+# Example Developer Extension Override
+# Copy this file to docker-compose.override.yml to enable local development extensions
+version: '3.8'
+
+services:
+  control-plane:
+    volumes:
+      - .:/app
+    environment:
+      - LOG_LEVEL=DEBUG
+      - REASONING_ENABLED=true
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: nexora-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: nexora-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
