@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from services.audit.ledger import AuditLedger
 from services.control_plane.core.db import get_db
 from services.models.db_models import Approval, RemediationPlan
 from services.models.domain_schemas import ApprovalCreate, ApprovalResponse
@@ -27,6 +28,18 @@ async def submit_approval(approval_in: ApprovalCreate, db: AsyncSession = Depend
 
     await db.commit()
     await db.refresh(approval)
+
+    await AuditLedger.log_event(
+        db,
+        actor=approval_in.approver,
+        action="APPROVAL_DECISION",
+        payload={
+            "approval_id": str(approval.approval_id),
+            "plan_id": str(plan.plan_id),
+            "decision": approval_in.decision,
+            "channel": approval_in.channel,
+        },
+    )
     return approval
 
 

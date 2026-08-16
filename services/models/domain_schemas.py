@@ -119,3 +119,35 @@ class AuditEventResponse(BaseModel):
     timestamp: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Patch Job Schemas ---
+class PatchJobCreate(BaseModel):
+    plan_id: uuid.UUID
+    execution_type: Literal["AGENTLESS_SSH", "WINRM", "K8S_ROLLOUT", "VIRTUAL_PATCH"] = Field(
+        "AGENTLESS_SSH"
+    )
+
+
+class PatchJobResponse(BaseModel):
+    job_id: uuid.UUID
+    plan_id: uuid.UUID
+    execution_type: str
+    status: str
+    execution_logs: List[str]
+    rollback_available: bool
+    snapshot_metadata: Dict[str, Any]
+    started_at: Optional[datetime]
+    completed_at: Optional[datetime]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PatchJobExecutionResult(BaseModel):
+    job_id: uuid.UUID
+    plan_id: uuid.UUID
+    overall_status: str
+    action_count: int
+    actions: List[Dict[str, Any]]
+
+    model_config = ConfigDict(from_attributes=True)

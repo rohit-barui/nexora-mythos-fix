@@ -58,7 +58,8 @@ dev = [
     "isort>=5.13.0",
     "flake8>=7.0.0",
     "mypy>=1.8.0",
-    "pre-commit>=3.7.0"
+    "pre-commit>=3.7.0",
+    "aiosqlite>=0.20.0"
 ]
 
 [tool.pytest.ini_options]

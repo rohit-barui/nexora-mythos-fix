@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict
 
 
@@ -13,7 +13,7 @@ class PrePatchSnapshotManager:
     @classmethod
     async def create_snapshot(cls, host: str, os_type: str) -> Dict[str, Any]:
         snapshot_id = f"snap-{uuid.uuid4().hex[:8]}"
-        created_at = datetime.utcnow().isoformat()
+        created_at = datetime.now(UTC).isoformat()
 
         if os_type in ["debian", "rhel", "alpine"]:
             mechanism = "LVM_SNAPSHOT"
@@ -35,5 +35,5 @@ class PrePatchSnapshotManager:
         return {
             "snapshot_id": snapshot_metadata.get("snapshot_id"),
             "status": "REVERTED",
-            "reverted_at": datetime.utcnow().isoformat(),
+            "reverted_at": datetime.now(UTC).isoformat(),
         }
