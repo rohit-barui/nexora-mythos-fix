@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from services.control_plane.api.v1.agents import router as agents_router
 from services.control_plane.api.v1.approvals import router as approvals_router
 from services.control_plane.api.v1.assets import router as assets_router
 from services.control_plane.api.v1.audit import router as audit_router
@@ -15,10 +16,20 @@ from services.control_plane.api.v1.remediation import router as remediation_rout
 from services.control_plane.api.v1.vulnerabilities import router as vulns_router
 from services.control_plane.config import settings
 from services.control_plane.core.db import init_db
+from services.control_plane.middleware import (
+    APIKeyMiddleware,
+    RateLimitMiddleware,
+    SecurityHeadersMiddleware,
+)
+from services.observability.metrics import get_metrics, instrument_app, setup_telemetry
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize observability
+    setup_telemetry()
+    instrument_app(app)
+
     # Initialize SQLite / PostgreSQL tables if in dev mode
     try:
         await init_db()
@@ -34,6 +45,11 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
 )
+
+# Security Middleware (order matters - innermost first)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=120)
+app.add_middleware(APIKeyMiddleware)
 
 # Set CORS
 app.add_middleware(
@@ -51,6 +67,7 @@ async def health_check():
 
 
 # Mount Routers under API_V1_STR
+app.include_router(agents_router, prefix=settings.API_V1_STR)
 app.include_router(assets_router, prefix=settings.API_V1_STR)
 app.include_router(vulns_router, prefix=settings.API_V1_STR)
 app.include_router(remediation_router, prefix=settings.API_V1_STR)
@@ -67,3 +84,8 @@ app.mount("/static", StaticFiles(directory="services/control_plane/static"), nam
 @app.get("/dashboard", include_in_schema=False)
 async def dashboard_ui():
     return FileResponse("services/control_plane/static/index.html")
+
+
+@app.get("/metrics", include_in_schema=False)
+async def metrics():
+    return get_metrics()

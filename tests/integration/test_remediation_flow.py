@@ -38,7 +38,9 @@ async def client():
 
     app.dependency_overrides[get_db] = override_get_db
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://test", headers={"X-Test-Bypass": "true"}
+    ) as c:
         yield c
     app.dependency_overrides.clear()
     await engine.dispose()
