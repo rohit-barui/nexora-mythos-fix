@@ -1,5 +1,7 @@
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 from services.execution_engine.base import BaseExecutionAdapter
+
 
 class DnfAdapter(BaseExecutionAdapter):
     """
@@ -14,21 +16,25 @@ class DnfAdapter(BaseExecutionAdapter):
         pkg = action.get("target_package")
         return [f"sudo dnf check-update {pkg}"]
 
-    async def execute_patch(self, target_host: str, action: Dict[str, Any], credentials: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_patch(
+        self, target_host: str, action: Dict[str, Any], credentials: Dict[str, Any]
+    ) -> Dict[str, Any]:
         pkg = action.get("target_package")
         cmd = f"sudo dnf update -y {pkg}"
         return {
             "status": "SUCCESS",
             "host": target_host,
             "executed_command": cmd,
-            "logs": [f"DNF updated package {pkg} on {target_host} successfully."]
+            "logs": [f"DNF updated package {pkg} on {target_host} successfully."],
         }
 
-    async def execute_rollback(self, target_host: str, action: Dict[str, Any], credentials: Dict[str, Any]) -> Dict[str, Any]:
-        cmd = f"sudo dnf history undo last -y"
+    async def execute_rollback(
+        self, target_host: str, action: Dict[str, Any], credentials: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        cmd = "sudo dnf history undo last -y"
         return {
             "status": "ROLLED_BACK",
             "host": target_host,
             "executed_command": cmd,
-            "logs": [f"DNF undo history executed on {target_host}."]
+            "logs": [f"DNF undo history executed on {target_host}."],
         }

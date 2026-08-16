@@ -4,29 +4,30 @@ from services.ingestion.base_plugin import BaseScannerPlugin
 from services.models.domain_schemas import VulnerabilityItem
 
 
-class QualysConnector(BaseScannerPlugin):
+class CrowdStrikeConnector(BaseScannerPlugin):
     """
-    Qualys Guard & VMDR API / Report Ingestor Plugin
+    CrowdStrike Falcon Spotlight Ingestor Plugin.
+    Parses streaming API vulnerability telemetry payloads.
     """
 
     @property
     def plugin_name(self) -> str:
-        return "qualys"
+        return "crowdstrike"
 
     async def parse_payload(self, raw_data: Dict[str, Any]) -> List[VulnerabilityItem]:
         vulnerabilities = []
-        # Support Qualys JSON payload format
-        results = raw_data.get("qualys_vm_detection", {}).get(
-            "detections", raw_data.get("detections", [])
-        )
+        results = raw_data.get("resources", raw_data.get("vulnerabilities", []))
+        if isinstance(results, dict):
+            results = results.get("resources", [])
         for item in results:
-            cve = item.get("cve_id", item.get("cve", "CVE-UNKNOWN"))
-            pkg = item.get("package", item.get("qid_title", "unknown-package"))
+            cve = item.get("cve", item.get("cve_id", "CVE-UNKNOWN"))
+            pkg = item.get("package", item.get("product", "unknown-package"))
             inst_ver = item.get("installed_version", "0.0.0")
-            fix_ver = item.get("fixed_version", None)
-            cvss = float(item.get("cvss_base", item.get("cvss", 0.0)))
+            fix_ver = item.get("fixed_version", item.get("remediation", {}).get("fixed_version"))
+
+            cvss = float(item.get("cvss", {}).get("base_score", item.get("cvss_score", 0.0)))
             epss = float(item.get("epss_score", 0.0))
-            is_kev = bool(item.get("is_known_exploited", False))
+            is_kev = bool(item.get("known_exploited", item.get("is_known_exploited", False)))
 
             vulnerabilities.append(
                 VulnerabilityItem(
@@ -46,5 +47,5 @@ class QualysConnector(BaseScannerPlugin):
     async def fetch_remote_scan(
         self, asset_identifier: str, credentials: Dict[str, Any]
     ) -> List[VulnerabilityItem]:
-        # Simulated API call for remote Qualys VMDR endpoint
+        # Simulated API call for CrowdStrike Falcon Spotlight endpoint
         return []

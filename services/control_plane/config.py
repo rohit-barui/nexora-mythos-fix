@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Nexora Control Plane"
     VERSION: str = "1.0.0"
@@ -14,5 +15,6 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "gpt-4o-mini"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
 
 settings = Settings()

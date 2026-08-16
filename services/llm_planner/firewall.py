@@ -1,13 +1,16 @@
 import re
-from typing import Dict, Any
+from typing import Any, Dict
+
 from pydantic import ValidationError
+
 from services.models.domain_schemas import RemediationPlanSchema
+
 
 class CognitiveAIFirewall:
     """
     Cognitive AI Firewall & Sanitizer.
-    Inspects input vulnerability metadata for injection attempts and validates structured LLM output payloads
-    against Pydantic v2 schemas before passing to OPA Policy Engine.
+    Inspects input vulnerability metadata for injection attempts and validates structured
+    LLM output payloads against Pydantic v2 schemas before passing to OPA Policy Engine.
     """
 
     SUSPICIOUS_PATTERNS = [
@@ -19,7 +22,7 @@ class CognitiveAIFirewall:
         r"bash -i",
         r"exec\(",
         r"eval\(",
-        r"__import__"
+        r"__import__",
     ]
 
     @classmethod
@@ -43,7 +46,10 @@ class CognitiveAIFirewall:
             # Extra safety check: verify no action attempts shell injection strings
             for action in plan.actions:
                 if any(char in action.target_package for char in [";", "&", "|", "`", "$"]):
-                    raise ValueError(f"Malicious character detected in target package name: {action.target_package}")
+                    raise ValueError(
+                        "Malicious character detected in target package name: "
+                        f"{action.target_package}"
+                    )
             return plan
         except ValidationError as e:
             raise ValueError(f"AI Firewall Rejected LLM Output: Schema validation failed: {str(e)}")

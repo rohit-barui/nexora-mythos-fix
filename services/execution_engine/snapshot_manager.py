@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
+
 
 class PrePatchSnapshotManager:
     """
@@ -26,7 +27,7 @@ class PrePatchSnapshotManager:
             "mechanism": mechanism,
             "host": host,
             "created_at": created_at,
-            "status": "READY"
+            "status": "READY",
         }
 
     @classmethod
@@ -34,5 +35,5 @@ class PrePatchSnapshotManager:
         return {
             "snapshot_id": snapshot_metadata.get("snapshot_id"),
             "status": "REVERTED",
-            "reverted_at": datetime.utcnow().isoformat()
+            "reverted_at": datetime.utcnow().isoformat(),
         }

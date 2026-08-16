@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from services.models.domain_schemas import VulnerabilityItem
+
 
 class BaseScannerPlugin(ABC):
     """
-    Abstract base class for all vulnerability scanner plugins (Qualys, Rapid7, Nessus, Trivy, Snyk, etc.)
+    Abstract base class for all vulnerability scanner plugins
+    (Qualys, Rapid7, Nessus, Trivy, Snyk, etc.).
     """
 
     @property
@@ -21,7 +24,9 @@ class BaseScannerPlugin(ABC):
         pass
 
     @abstractmethod
-    async def fetch_remote_scan(self, asset_identifier: str, credentials: Dict[str, Any]) -> List[VulnerabilityItem]:
+    async def fetch_remote_scan(
+        self, asset_identifier: str, credentials: Dict[str, Any]
+    ) -> List[VulnerabilityItem]:
         """
         Fetch scan results directly from scanner API endpoints.
         """

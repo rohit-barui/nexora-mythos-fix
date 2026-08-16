@@ -1,6 +1,8 @@
 import datetime
+from typing import Any, Dict
+
 import httpx
-from typing import Dict, Any
+
 
 class OPAPolicyClient:
     """
@@ -15,7 +17,7 @@ class OPAPolicyClient:
         self,
         asset_info: Dict[str, Any],
         plan_payload: Dict[str, Any],
-        has_escalation_approval: bool = False
+        has_escalation_approval: bool = False,
     ) -> Dict[str, Any]:
         current_hour = datetime.datetime.utcnow().hour
 
@@ -24,15 +26,14 @@ class OPAPolicyClient:
                 "asset": asset_info,
                 "plan": plan_payload,
                 "current_hour_utc": current_hour,
-                "has_escalation_approval": has_escalation_approval
+                "has_escalation_approval": has_escalation_approval,
             }
         }
 
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 response = await client.post(
-                    f"{self.opa_url}/v1/data/nexora/remediation",
-                    json=input_data
+                    f"{self.opa_url}/v1/data/nexora/remediation", json=input_data
                 )
                 if response.status_code == 200:
                     result = response.json().get("result", {})
@@ -40,7 +41,7 @@ class OPAPolicyClient:
                         "allowed": result.get("allow", False),
                         "require_escalation": result.get("require_escalation", False),
                         "violations": result.get("violations", []),
-                        "evaluated_at": datetime.datetime.utcnow().isoformat()
+                        "evaluated_at": datetime.datetime.utcnow().isoformat(),
                     }
         except Exception:
             pass
@@ -48,7 +49,9 @@ class OPAPolicyClient:
         # Fallback local evaluation if OPA service is unreachable during local testing
         violations = []
         if asset_info.get("environment") == "production" and (9 <= current_hour <= 17):
-            violations.append("Production patching blocked during UTC business hours (09:00 - 17:00)")
+            violations.append(
+                "Production patching blocked during UTC business hours (09:00 - 17:00)"
+            )
 
         allowed = len(violations) == 0
         require_escalated = asset_info.get("criticality_score", 5) >= 9
@@ -58,5 +61,5 @@ class OPAPolicyClient:
             "require_escalation": require_escalated,
             "violations": violations,
             "evaluated_at": datetime.datetime.utcnow().isoformat(),
-            "mode": "local_fallback"
+            "mode": "local_fallback",
         }

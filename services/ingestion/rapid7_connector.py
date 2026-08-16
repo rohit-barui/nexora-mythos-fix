@@ -1,6 +1,8 @@
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from services.ingestion.base_plugin import BaseScannerPlugin
 from services.models.domain_schemas import VulnerabilityItem
+
 
 class Rapid7Connector(BaseScannerPlugin):
     """
@@ -33,10 +35,12 @@ class Rapid7Connector(BaseScannerPlugin):
                     epss_score=epss,
                     is_known_exploited=is_kev,
                     scanner_source=self.plugin_name,
-                    raw_metadata=item
+                    raw_metadata=item,
                 )
             )
         return vulnerabilities
 
-    async def fetch_remote_scan(self, asset_identifier: str, credentials: Dict[str, Any]) -> List[VulnerabilityItem]:
+    async def fetch_remote_scan(
+        self, asset_identifier: str, credentials: Dict[str, Any]
+    ) -> List[VulnerabilityItem]:
         return []

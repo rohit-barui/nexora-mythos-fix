@@ -1,17 +1,19 @@
-import uuid
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from services.control_plane.core.db import get_db
-from services.models.db_models import RemediationPlan, Asset, Vulnerability
-from services.models.domain_schemas import RemediationPlanCreate, RemediationPlanResponse
 from services.llm_planner.client import LLMPlannerClient
+from services.models.db_models import Asset, RemediationPlan, Vulnerability
+from services.models.domain_schemas import RemediationPlanCreate, RemediationPlanResponse
 from services.policy_engine.client import OPAPolicyClient
 
 router = APIRouter(prefix="/remediation", tags=["Remediation Plans"])
 llm_client = LLMPlannerClient()
 opa_client = OPAPolicyClient()
+
 
 @router.post("/generate", response_model=RemediationPlanResponse)
 async def generate_plan(payload: RemediationPlanCreate, db: AsyncSession = Depends(get_db)):
@@ -23,13 +25,15 @@ async def generate_plan(payload: RemediationPlanCreate, db: AsyncSession = Depen
     for v_id in payload.vulnerability_ids:
         v = await db.get(Vulnerability, v_id)
         if v:
-            vuln_records.append({
-                "cve_id": v.cve_id,
-                "package_name": v.package_name,
-                "installed_version": v.installed_version,
-                "fixed_version": v.fixed_version,
-                "risk_score": v.calculated_risk_score
-            })
+            vuln_records.append(
+                {
+                    "cve_id": v.cve_id,
+                    "package_name": v.package_name,
+                    "installed_version": v.installed_version,
+                    "fixed_version": v.fixed_version,
+                    "risk_score": v.calculated_risk_score,
+                }
+            )
 
     # 1. Generate bounded plan via LLM & Cognitive AI Firewall
     plan_schema = await llm_client.generate_remediation_plan(
@@ -37,9 +41,9 @@ async def generate_plan(payload: RemediationPlanCreate, db: AsyncSession = Depen
             "hostname": asset.hostname,
             "os_type": asset.os_type,
             "environment": asset.environment,
-            "criticality_score": asset.criticality_score
+            "criticality_score": asset.criticality_score,
         },
-        vulnerabilities=vuln_records
+        vulnerabilities=vuln_records,
     )
 
     # 2. Evaluate plan with OPA Policy Engine
@@ -48,9 +52,9 @@ async def generate_plan(payload: RemediationPlanCreate, db: AsyncSession = Depen
             "hostname": asset.hostname,
             "os_type": asset.os_type,
             "environment": asset.environment,
-            "criticality_score": asset.criticality_score
+            "criticality_score": asset.criticality_score,
         },
-        plan_payload=plan_schema.model_dump()
+        plan_payload=plan_schema.model_dump(),
     )
 
     status = "PENDING_APPROVAL" if opa_res.get("allowed") else "REJECTED_BY_POLICY"
@@ -62,12 +66,13 @@ async def generate_plan(payload: RemediationPlanCreate, db: AsyncSession = Depen
         planner_model="gpt-4o-mini",
         plan_payload=plan_schema.model_dump(),
         opa_evaluation_result=opa_res,
-        status=status
+        status=status,
     )
     db.add(plan)
     await db.commit()
     await db.refresh(plan)
     return plan
+
 
 @router.get("/plans", response_model=List[RemediationPlanResponse])
 async def list_plans(db: AsyncSession = Depends(get_db)):

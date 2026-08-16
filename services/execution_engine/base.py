@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 
 class BaseExecutionAdapter(ABC):
     """
@@ -20,14 +21,18 @@ class BaseExecutionAdapter(ABC):
         pass
 
     @abstractmethod
-    async def execute_patch(self, target_host: str, action: Dict[str, Any], credentials: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_patch(
+        self, target_host: str, action: Dict[str, Any], credentials: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Execute deterministic, idempotent patch command set.
         """
         pass
 
     @abstractmethod
-    async def execute_rollback(self, target_host: str, action: Dict[str, Any], credentials: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_rollback(
+        self, target_host: str, action: Dict[str, Any], credentials: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Execute rollback command set if post-patch verification fails.
         """
