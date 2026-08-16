@@ -1,10 +1,14 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, Uuid
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+def _utc_now_naive() -> datetime:
+    """Naive UTC timestamp (matches legacy utcnow semantics without deprecation)."""
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class Base(DeclarativeBase):
@@ -14,9 +18,7 @@ class Base(DeclarativeBase):
 class Asset(Base):
     __tablename__ = "assets"
 
-    asset_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    asset_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     hostname: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
     os_type: Mapped[str] = mapped_column(
@@ -29,9 +31,9 @@ class Asset(Base):
     exposure_level: Mapped[str] = mapped_column(
         String(50), nullable=False, default="internal"
     )  # internet-facing, internal, isolated
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utc_now_naive)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime, default=_utc_now_naive, onupdate=_utc_now_naive
     )
 
     vulnerabilities: Mapped[List["Vulnerability"]] = relationship(
@@ -45,13 +47,9 @@ class Asset(Base):
 class Vulnerability(Base):
     __tablename__ = "vulnerabilities"
 
-    vulnerability_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    vulnerability_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     cve_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
-    asset_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("assets.asset_id"), nullable=False
-    )
+    asset_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("assets.asset_id"), nullable=False)
     package_name: Mapped[str] = mapped_column(String(255), nullable=False)
     installed_version: Mapped[str] = mapped_column(String(100), nullable=False)
     fixed_version: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -68,12 +66,12 @@ class Vulnerability(Base):
     scanner_source: Mapped[str] = mapped_column(
         String(100), nullable=False, default="trivy"
     )  # qualys, rapid7, nessus, trivy
-    raw_metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    raw_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="OPEN"
     )  # OPEN, IN_REMEDIATION, RESOLVED, IGNORED
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utc_now_naive)
 
     asset: Mapped["Asset"] = relationship("Asset", back_populates="vulnerabilities")
 
@@ -81,28 +79,22 @@ class Vulnerability(Base):
 class RemediationPlan(Base):
     __tablename__ = "remediation_plans"
 
-    plan_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    asset_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("assets.asset_id"), nullable=False
-    )
-    vulnerability_ids: Mapped[List[str]] = mapped_column(JSONB, nullable=False, default=list)
+    plan_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    asset_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("assets.asset_id"), nullable=False)
+    vulnerability_ids: Mapped[List[str]] = mapped_column(JSON, nullable=False, default=list)
 
     generated_by_llm: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     planner_model: Mapped[str] = mapped_column(String(100), nullable=False, default="gpt-4o-mini")
 
-    plan_payload: Mapped[Dict[str, Any]] = mapped_column(
-        JSONB, nullable=False
-    )  # Actions array JSON
+    plan_payload: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)  # Actions array JSON
     opa_evaluation_result: Mapped[Dict[str, Any]] = mapped_column(
-        JSONB, nullable=False, default=dict
+        JSON, nullable=False, default=dict
     )
 
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="PENDING_POLICY"
     )  # PENDING_POLICY, PENDING_APPROVAL, APPROVED, REJECTED, EXECUTED, FAILED
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utc_now_naive)
 
     asset: Mapped["Asset"] = relationship("Asset", back_populates="plans")
     approval: Mapped[Optional["Approval"]] = relationship(
@@ -114,11 +106,9 @@ class RemediationPlan(Base):
 class Approval(Base):
     __tablename__ = "approvals"
 
-    approval_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    approval_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     plan_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("remediation_plans.plan_id"), nullable=False
+        Uuid, ForeignKey("remediation_plans.plan_id"), nullable=False
     )
     approver: Mapped[str] = mapped_column(
         String(255), nullable=False
@@ -130,7 +120,7 @@ class Approval(Base):
     channel: Mapped[str] = mapped_column(
         String(50), nullable=False, default="WEB_DASHBOARD"
     )  # WEB_DASHBOARD, TEAMS_BOT, SLACK
-    decided_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    decided_at: Mapped[datetime] = mapped_column(DateTime, default=_utc_now_naive)
 
     plan: Mapped["RemediationPlan"] = relationship("RemediationPlan", back_populates="approval")
 
@@ -138,11 +128,9 @@ class Approval(Base):
 class PatchJob(Base):
     __tablename__ = "patch_jobs"
 
-    job_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    job_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     plan_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("remediation_plans.plan_id"), nullable=False
+        Uuid, ForeignKey("remediation_plans.plan_id"), nullable=False
     )
     execution_type: Mapped[str] = mapped_column(
         String(50), nullable=False
@@ -151,9 +139,9 @@ class PatchJob(Base):
         String(50), nullable=False, default="QUEUED"
     )  # QUEUED, RUNNING, SUCCESS, FAILED, ROLLED_BACK
 
-    execution_logs: Mapped[List[str]] = mapped_column(JSONB, nullable=False, default=list)
+    execution_logs: Mapped[List[str]] = mapped_column(JSON, nullable=False, default=list)
     rollback_available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    snapshot_metadata: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    snapshot_metadata: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -164,20 +152,18 @@ class PatchJob(Base):
 class AuditEvent(Base):
     __tablename__ = "audit_events"
 
-    event_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    event_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     actor: Mapped[str] = mapped_column(
         String(255), nullable=False, index=True
     )  # System, User, LLM Planner, OPA Engine
     action: Mapped[str] = mapped_column(
         String(100), nullable=False, index=True
     )  # VULN_INGESTED, PLAN_GENERATED, POLICY_PASSED, APPROVAL, PATCH_EXECUTED, ROLLBACK
-    payload: Mapped[Dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    payload: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False)
     previous_event_hash: Mapped[Optional[str]] = mapped_column(
         String(64), nullable=True
     )  # Merkle tree hash chain
     event_hash: Mapped[str] = mapped_column(
         String(64), nullable=False
     )  # SHA-256 (payload + prev_hash)
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=_utc_now_naive, index=True)
