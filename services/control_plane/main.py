@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from services.control_plane.api.v1.approvals import router as approvals_router
 from services.control_plane.api.v1.assets import router as assets_router
 from services.control_plane.api.v1.audit import router as audit_router
+from services.control_plane.api.v1.patch_jobs import router as patch_jobs_router
 from services.control_plane.api.v1.remediation import router as remediation_router
 from services.control_plane.api.v1.vulnerabilities import router as vulns_router
 from services.control_plane.config import settings
@@ -46,3 +47,4 @@ app.include_router(vulns_router, prefix=settings.API_V1_STR)
 app.include_router(remediation_router, prefix=settings.API_V1_STR)
 app.include_router(approvals_router, prefix=settings.API_V1_STR)
 app.include_router(audit_router, prefix=settings.API_V1_STR)
+app.include_router(patch_jobs_router, prefix=settings.API_V1_STR)
