@@ -9,13 +9,15 @@ from services.v2_agent.agent import V2Agent, get_agent
 async def test_v2_agent_start_stop():
     agent = V2Agent("http://localhost:8000", agent_id="test-agent", api_key="test-key")
 
-    mock_client = AsyncMock()
-    mock_client.post = AsyncMock(return_value=MagicMock(raise_for_status=MagicMock()))
-    mock_cm = AsyncMock()
-    mock_cm.__aenter__ = AsyncMock(return_value=mock_client)
-    mock_cm.__aexit__ = AsyncMock(return_value=None)
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.json = MagicMock(return_value={"status": "registered"})
 
-    with patch("services.v2_agent.agent.httpx.AsyncClient", return_value=mock_cm):
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(return_value=mock_resp)
+    mock_client.aclose = AsyncMock()
+
+    with patch("services.v2_agent.agent.httpx.AsyncClient", return_value=mock_client):
         await agent.start()
         assert agent._running is True
         await agent.stop()
