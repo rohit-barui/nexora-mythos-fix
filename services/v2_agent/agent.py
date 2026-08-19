@@ -21,11 +21,16 @@ class V2Agent:
         control_plane_url: str,
         agent_id: str = None,
         api_key: str = None,
+        grpc_target: Optional[str] = None,
+        use_grpc: bool = False,
     ) -> None:
         self.control_plane_url = control_plane_url.rstrip("/")
         self.agent_id = agent_id or f"agent-{uuid.uuid4().hex[:8]}"
         self.api_key = api_key
+        self.grpc_target = grpc_target
+        self.use_grpc = use_grpc
         self._client: Optional[httpx.AsyncClient] = None
+        self._grpc: Optional[Any] = None
         self._running = False
         self._task: Optional[asyncio.Task] = None
 
@@ -37,12 +42,20 @@ class V2Agent:
         return h
 
     async def start(self) -> None:
-        """Start the agent (register + heartbeat loop)."""
-        self._client = httpx.AsyncClient(timeout=30.0)
-        await self._register()
+        """Start the agent (register + heartbeat loop) over HTTP or gRPC."""
+        if self.use_grpc:
+            from services.v2_agent.grpc_client import AgentGRPCClient
+
+            self._grpc = AgentGRPCClient(
+                target=self.grpc_target or "localhost:50051", agent_id=self.agent_id
+            )
+            await self._register()
+        else:
+            self._client = httpx.AsyncClient(timeout=30.0)
+            await self._register()
         self._running = True
         self._task = asyncio.create_task(self._heartbeat_loop())
-        logger.info("V2 Agent %s started", self.agent_id)
+        logger.info("V2 Agent %s started (%s)", self.agent_id, "grpc" if self.use_grpc else "http")
 
     async def stop(self) -> None:
         """Stop the agent."""
@@ -53,12 +66,22 @@ class V2Agent:
                 await self._task
             except asyncio.CancelledError:
                 pass
+        if self._grpc is not None:
+            await self._grpc.close()
         if self._client:
             await self._client.aclose()
         logger.info("V2 Agent %s stopped", self.agent_id)
 
     async def _register(self) -> None:
         """Register agent with control plane."""
+        if self._grpc is not None:
+            await self._grpc.register(
+                self.agent_id,
+                "2.0.0",
+                ["patch_execution", "telemetry", "snapshot"],
+            )
+            logger.info("Agent registered via gRPC: %s", self.agent_id)
+            return
         try:
             resp = await self._client.post(
                 f"{self.control_plane_url}/api/v1/agents/register",
@@ -85,10 +108,15 @@ class V2Agent:
 
     async def send_heartbeat(self) -> Dict[str, Any]:
         """Send heartbeat with telemetry."""
+        telemetry = await self.collect_telemetry()
+        if self._grpc is not None:
+            return await self._grpc.heartbeat(
+                self.agent_id,
+                telemetry.get("status", "healthy"),
+                telemetry.get("metrics", {}),
+            )
         if not self._client:
             return {"error": "not started"}
-
-        telemetry = await self.collect_telemetry()
         resp = await self._client.post(
             f"{self.control_plane_url}/api/v1/agents/{self.agent_id}/heartbeat",
             headers=self.headers,
@@ -112,7 +140,14 @@ class V2Agent:
         }
 
     async def execute_command(self, command: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute a command from the control plane."""
+        """Execute a command from the control plane (gRPC or HTTP)."""
+        if self._grpc is not None:
+            return await self._grpc.execute(
+                self.agent_id,
+                command.get("action", ""),
+                command.get("package", ""),
+                command.get("payload", ""),
+            )
         action = command.get("action")
         if action == "patch":
             return await self._execute_patch(command)

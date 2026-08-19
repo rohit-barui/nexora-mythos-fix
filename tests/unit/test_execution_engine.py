@@ -11,7 +11,17 @@ from services.execution_engine.winrm_adapter import WinRMAdapter
 
 def test_registry_resolves_all_methods():
     supported = ExecutionAdapterRegistry.supported_methods()
-    assert supported == ["apk", "apt", "dnf", "k8s_image", "sysctl", "waf_rule", "winrm"]
+    assert supported == [
+        "apk",
+        "apt",
+        "dnf",
+        "docker_image",
+        "k8s_image",
+        "ssm",
+        "sysctl",
+        "waf_rule",
+        "winrm",
+    ]
     for method in supported:
         adapter = ExecutionAdapterRegistry.get(method)
         assert adapter is not None

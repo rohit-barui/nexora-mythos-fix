@@ -2,7 +2,9 @@ from typing import Dict, Type
 
 from services.execution_engine.apk_adapter import ApkAdapter
 from services.execution_engine.apt_adapter import AptAdapter
+from services.execution_engine.aws_ssm_adapter import AWSSSMAdapter
 from services.execution_engine.base import BaseExecutionAdapter
+from services.execution_engine.container_patcher import ContainerPatcher
 from services.execution_engine.dnf_adapter import DnfAdapter
 from services.execution_engine.k8s_adapter import KubernetesAdapter
 from services.execution_engine.kernel_hardening_adapter import KernelHardeningAdapter
@@ -24,6 +26,8 @@ class ExecutionAdapterRegistry:
         "k8s_image": KubernetesAdapter,
         "waf_rule": VirtualPatchAdapter,
         "sysctl": KernelHardeningAdapter,
+        "ssm": AWSSSMAdapter,
+        "docker_image": ContainerPatcher,
     }
 
     @classmethod
