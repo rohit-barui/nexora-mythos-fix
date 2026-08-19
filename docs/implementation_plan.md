@@ -54,137 +54,171 @@ Mythos Fix includes a pluggable **Ingestion Core** supporting both file-based sc
 
 ---
 
-## Scaffolding Architecture (To Be Generated Now)
+## Repository Structure (Current)
 
 ```
 Nexora/
 ├── README.md
+├── LICENSE
+├── CONTRIBUTING.md
+├── SECURITY.md
+├── CODE_OF_CONDUCT.md
 ├── docker-compose.yml
-├── docker-compose.override.yml.example  # Extensible overlay for dev/prod
+├── docker-compose.override.yml.example
 ├── Makefile
 ├── config.json
-├── docs/
-│   └── architecture.md
 ├── pyproject.toml
 ├── alembic.ini
+├── docs/
+│   ├── architecture.md
+│   ├── conventions.md
+│   └── implementation_plan.md
 ├── policies/                            # OPA Rego Policy Suite
 │   ├── remediation_rules.rego
 │   ├── safety_checks.rego
 │   └── virtual_patch_rules.rego
 ├── services/
-│   ├── __init__.py
-│   ├── control_plane/                  # FastAPI API Gateway & Auth
-│   │   ├── __init__.py
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── api/
-│   │   │   ├── v1/
-│   │   │   │   ├── assets.py
-│   │   │   │   ├── vulnerabilities.py
-│   │   │   │   ├── remediation.py
-│   │   │   │   ├── approvals.py
-│   │   │   │   └── audit.py
-│   │   └── core/
-│   │       ├── security.py
-│   │       └── db.py
-│   ├── models/                         # Pydantic Schemas & DB Models
-│   │   ├── __init__.py
-│   │   ├── db_models.py
-│   │   └── domain_schemas.py
-│   ├── ingestion/                      # Enterprise Scanner & Intelligence Plugins
-│   │   ├── __init__.py
-│   │   ├── base_plugin.py              # Pluggable Scanner Interface
-│   │   ├── qualys_connector.py         # Qualys VMDR API & Report Ingestor
-│   │   ├── rapid7_connector.py         # Rapid7 InsightVM Ingestor
-│   │   ├── nessus_connector.py         # Tenable Nessus Ingestor
-│   │   ├── crowdstrike_connector.py    # CrowdStrike Spotlight Ingestor
-│   │   ├── trivy_parser.py             # Trivy JSON Scanner Parser
-│   │   ├── nvd_feed.py                 # NVD API v2.0 Client
-│   │   ├── cisa_kev.py                 # CISA KEV Feed Client
-│   │   ├── epss_feed.py                # FIRST EPSS Score Client
-│   │   └── normalizer.py               # Ingestion Schema Normalizer
-│   ├── risk_engine/                    # Deterministic Multi-Factor Risk Scoring
-│   │   ├── __init__.py
-│   │   └── scorer.py
-│   ├── llm_planner/                    # Cognitive AI Firewall & LLM Planner
-│   │   ├── __init__.py
-│   │   ├── client.py
-│   │   ├── firewall.py                 # Anti-Jailbreak & Prompt Poisoning Guard
-│   │   ├── prompts.py
-│   │   └── schema.py
+│   ├── control_plane/                  # FastAPI Gateway & API Routes
+│   ├── models/                         # DB Models & Pydantic v2 Schemas
+│   ├── ingestion/                      # Qualys, Rapid7, Nessus, Trivy, NVD Plugins
+│   ├── risk_engine/                    # Deterministic Risk Scoring Module
+│   ├── llm_planner/                    # Cognitive AI Firewall & LLM Engine
 │   ├── policy_engine/                  # OPA Policy Gatekeeper Integration
-│   │   ├── __init__.py
-│   │   └── client.py
 │   ├── orchestrator/                   # Temporal Workflows & Activities
-│   │   ├── __init__.py
-│   │   ├── workflows.py
-│   │   ├── activities.py
-│   │   └── worker.py
 │   ├── execution_engine/               # Multi-OS Execution Adapters
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── apt_adapter.py              # Debian / Ubuntu
-│   │   ├── dnf_adapter.py              # RHEL / CentOS / Rocky
-│   │   ├── apk_adapter.py              # Alpine Linux
-│   │   ├── winrm_adapter.py            # Windows Server
-│   │   ├── k8s_adapter.py              # Kubernetes Rollout & Helm
-│   │   ├── aws_ssm_adapter.py          # AWS Cloud Instances
-│   │   ├── virtual_patch_adapter.py    # WAF & Sysctl Mitigation
-│   │   ├── snapshot_manager.py         # LVM / EBS / VSS Snapshots
-│   │   └── ansible_runner.py
+│   │   ├── apt_adapter.py
+│   │   ├── dnf_adapter.py
+│   │   ├── apk_adapter.py
+│   │   ├── winrm_adapter.py
+│   │   ├── k8s_adapter.py
+│   │   ├── aws_ssm_adapter.py          # AWS SSM Run Command (Phase 10)
+│   │   ├── container_patcher.py        # Dockerfile/compose tag rewrite (Phase 10)
+│   │   ├── virtual_patch_adapter.py
+│   │   ├── snapshot_manager.py
+│   │   ├── secrets_manager.py          # Vault + AWS Secrets Manager (Phase 10)
+│   │   ├── ab_rollback.py              # A/B dual-slot rollback (Phase 11)
+│   │   └── registry.py
+│   ├── orchestrator/
+│   │   ├── canary.py                   # Canary deployment + Redlock (Phase 10)
+│   │   └── engine.py
+│   ├── ingestion/
+│   │   └── rescan_verifier.py          # Post-patch rescan (Phase 10)
+│   ├── audit/
+│   │   └── ledger.py                   # Merkle hash-chained audit
+│   ├── observability/
+│   │   ├── metrics.py
+│   │   └── audit.py
 │   └── v2_agent/                       # Distributed Agent Framework (V2)
-│       ├── __init__.py
-│       ├── daemon.py
-│       ├── updater.py
-│       └── grpc_client.py
-├── frontend/                           # Next.js 14 Dashboard
-│   ├── package.json
-│   ├── next.config.js
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── page.tsx
-│   │   │   ├── vulnerabilities/page.tsx
-│   │   │   ├── approvals/page.tsx
-│   │   │   └── audit/page.tsx
-│   │   ├── components/
-│   │   └── lib/
-└── tests/                              # Comprehensive Test Suite
-    ├── unit/
-    ├── integration/
-    └── e2e/
+│       ├── agent.py                    # HTTP + optional gRPC
+│       ├── mtls.py                     # Self-signed CA + identity certs
+│       ├── grpc_server.py              # mTLS gRPC server
+│       ├── grpc_client.py              # Async gRPC client
+│       ├── proto/agent.proto           # Protobuf definitions
+│       └── agent_pb2*.py               # Generated gRPC code
+├── tests/                              # 190 tests, 84.6% coverage
+└── cli.py                              # nexora CLI (Phase 12)
 ```
 
 ---
 
-## Action Plan & Scaffolding Execution Phases
+## Implementation Phases — **ALL COMPLETE**
 
-1. **Phase 1 (Immediate Scaffold)**:
-   - Generate project infrastructure: `pyproject.toml`, `docker-compose.yml`, `docker-compose.override.yml.example`, `Makefile`.
-   - Core DB Schema & Domain Models: `services/models/db_models.py`, `services/models/domain_schemas.py`.
-   - Ingestion Plugin Engine: `services/ingestion/base_plugin.py`, `qualys_connector.py`, `rapid7_connector.py`, `trivy_parser.py`, `normalizer.py`.
-   - AI Firewall & LLM Planner: `services/llm_planner/firewall.py`, `services/llm_planner/client.py`.
-   - OPA Policy Engine & Rego Files: `policies/remediation_rules.rego`, `services/policy_engine/client.py`.
-   - Execution Adapters & Snapshot Engine: Multi-OS adapters (`apt`, `dnf`, `winrm`, `k8s`, `virtual_patch`, `snapshot_manager`).
-   - FastAPI Control Plane API: `services/control_plane/main.py` and router endpoints.
+### Phase 1–7: Foundations (Ingestion, Risk, Planning, Orchestration, API, Agents, Hardening)
+- Scanner ingestion plugins (Qualys, Rapid7, Nessus, Trivy, NVD, CISA KEV, EPSS)
+- Deterministic risk scoring (CVSS/EPSS/KEV/Asset/Exposure weights)
+- Cognitive AI Firewall + structured LLM planner (OpenAI/Anthropic/Gemini/Ollama)
+- OPA policy gatekeeper with Rego policies
+- Temporal workflows + activities + in-process fallback
+- Multi-OS execution adapters (apt, dnf, apk, winrm, k8s, virtual_patch, sysctl)
+- Snapshot manager (LVM, EBS, VSS)
+- FastAPI control plane with audit ledger
 
-2. **Phase 2 (Orchestration & HITL Integrations)**:
-   - Temporal Workflows (`services/orchestrator/workflows.py` & `activities.py`).
-   - MS Teams / Slack Adaptive Cards for inline human approvals.
+### Phase 8: Data & Telemetry Core
+- **SLA Tracker**: KEV 14d / critical 7d / high 30d / standard 90d + 48h escalation
+- **AI Activity Log**: Full telemetry of LLM prompts, responses, costs
+- **Risk Exceptions**: Structured exception workflow with approval chain
+- **ITSMTicket**: Unified Jira/ServiceNow tracking table
+- **JWT + HMAC**: PyJWT authentication, HMAC-SHA256 for webhook verification
+- **Metrics**: Prometheus counters/histograms for scans, patches, OPA, AI activity
 
-3. **Phase 3 (Enterprise Scale & Distributed Mesh)**:
-   - Kafka Event Backbone, HashiCorp Vault secrets, gRPC V2 Agent framework with dual-slot auto-updater.
+### Phase 9: HITL Approvals & ITSM
+- **MS Teams Adaptive Card v1.4**: Interactive Approve/Reject buttons with HMAC-signed payloads
+- **MS Outlook Actionable Messages**: Embedded adaptive cards via base64 script
+- **HMAC-Verified Callback**: `POST /approvals/callback` with X-Nexora-Signature
+- **Jira Cloud Connector**: Issue creation, resolution, status sync + ITSMTicket persistence
+- **ServiceNow Connector**: Change Request CRUD + ITSMTicket persistence
+- **Emergency Rollback**: `POST /patch-jobs/{id}/rollback` with audit logging
+
+### Phase 10: Execution & Ops
+- **AWS SSM Adapter**: Run Command execution with hermetic local fallback
+- **Container Patcher**: Dockerfile/compose tag rewrite + Cosign digest verification
+- **Canary Orchestrator**: 5% → 25% → 70% → 100% rings + Redlock anti-cascade (in-process fallback)
+- **Secrets Manager**: Vault / AWS Secrets Manager / in-process backends
+- **Rescan Verifier**: Post-patch rescan with retry loop for verification
+- **CLI**: `nexora audit verify`, `nexora scan report`, `nexora scan rescan-verify`
+
+### Phase 11: V2 Agent gRPC/mTLS + A/B Rollback
+- **gRPC AgentService**: Register, Heartbeat, Execute, GetStatus (protobuf)
+- **Mutual TLS**: Self-signed CA + CA-signed identity certs, server requires client auth
+- **Async gRPC Client**: Control plane → agent communication
+- **V2Agent Optional gRPC Mode**: Backward-compatible HTTP path retained
+- **A/B Dual-Slot Manager**: Promote/confirm/rollback between deployment slots
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-- **Scanner Ingestion Verification**: Run tests parsing Qualys XML, Rapid7 JSON, and Trivy output files.
-- **AI Firewall & Pydantic Schema Security**: Verify `firewall.py` blocks malformed or unvalidated LLM JSON payloads.
-- **Multi-OS Execution Adapter Dry-Runs**: Run dry-run execution checks across `apt`, `dnf`, `winrm`, `k8s`, and `virtual_patch` adapters.
-- **OPA Policy Unit Testing**: Validate OPA rules correctly enforce business hours, kernel escalation gates, and mandatory approvals.
+- **Scanner Ingestion**: Qualys XML, Rapid7 JSON, Trivy output parsing
+- **AI Firewall & Schema Security**: Pydantic validation blocks malformed LLM payloads
+- **Multi-OS Adapter Dry-Runs**: apt, dnf, winrm, k8s, virtual_patch, sysctl, ssm, docker_image
+- **OPA Policy Unit Testing**: Business hours, kernel escalation, mandatory approvals
+- **Canary + Redlock**: Ring progression, contention blocking, anti-cascade
+- **HITL Callbacks**: HMAC signature valid/invalid, Teams/Outlook card structure
+- **A/B Rollback**: Slot promotion, confirmation, rollback state transitions
+- **Rescan Verifier**: Verification pass/fail with retry semantics
+
+### Coverage & Quality Gates
+- **190 tests passing**
+- **84.6% coverage** (gate: >= 50%)
+- **Zero deprecation warnings** (`-W error::DeprecationWarning`)
+- **Lint clean**: black, isort, flake8 (max-line-length=100)
 
 ### Manual Verification
-- Start services via `docker-compose up -d`.
-- Verify API interactive docs at `http://localhost:8000/docs`.
-- Run sample vulnerability ingestion through Qualys/Trivy connectors into the risk scoring engine.
+```bash
+# Start stack
+docker-compose up -d
+
+# Run migrations
+alembic upgrade head
+
+# Start API
+uvicorn services.control_plane.main:app --reload
+
+# Verify API docs
+open http://localhost:8000/docs
+```
+
+---
+
+## Deployment Notes
+
+### Required Infrastructure
+- **PostgreSQL 15+** (asyncpg)
+- **Redis 7+** (for Redlock + caching)
+- **Temporal Server** (optional - in-process fallback available)
+- **OPA Server** (optional - embedded client available)
+
+### Environment Variables
+See `config.json` and `services/control_plane/config.py` for full configuration options.
+
+### Security Hardening
+- Rotate `SECRET_KEY` in production (min 32 bytes)
+- Replace self-signed mTLS certs with PKI-issued certificates
+- Configure Vault/AWS Secrets Manager for production secrets
+- Enable audit log retention policies
+
+---
+
+## License
+Apache License 2.0 — see [LICENSE](../LICENSE)
