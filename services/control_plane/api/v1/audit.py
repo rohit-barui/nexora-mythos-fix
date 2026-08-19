@@ -8,6 +8,7 @@ from services.audit.ledger import AuditLedger
 from services.control_plane.core.db import get_db
 from services.models.db_models import AuditEvent
 from services.models.domain_schemas import AuditEventResponse
+from services.observability.metrics import set_audit_chain_valid
 
 router = APIRouter(prefix="/audit", tags=["Audit Log"])
 
@@ -27,4 +28,6 @@ async def log_audit_event(
 
 @router.get("/verify")
 async def verify_audit_chain(db: AsyncSession = Depends(get_db)):
-    return await AuditLedger.verify_chain(db)
+    result = await AuditLedger.verify_chain(db)
+    set_audit_chain_valid(bool(result["valid"]))
+    return result

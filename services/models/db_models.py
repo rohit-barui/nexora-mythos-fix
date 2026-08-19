@@ -71,6 +71,7 @@ class Vulnerability(Base):
     status: Mapped[str] = mapped_column(
         String(50), nullable=False, default="OPEN"
     )  # OPEN, IN_REMEDIATION, RESOLVED, IGNORED
+    sla_deadline: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utc_now_naive)
 
     asset: Mapped["Asset"] = relationship("Asset", back_populates="vulnerabilities")
@@ -167,3 +168,52 @@ class AuditEvent(Base):
         String(64), nullable=False
     )  # SHA-256 (payload + prev_hash)
     timestamp: Mapped[datetime] = mapped_column(DateTime, default=_utc_now_naive, index=True)
+
+
+class AIActivityLog(Base):
+    __tablename__ = "ai_activity_logs"
+
+    log_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    vulnerability_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
+    prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    completion_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    estimated_cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    latency_ms: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    sanitizer_passed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    prompt_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=_utc_now_naive, index=True)
+
+
+class RiskException(Base):
+    __tablename__ = "risk_exceptions"
+
+    exception_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    vulnerability_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("vulnerabilities.vulnerability_id"), nullable=False
+    )
+    requester: Mapped[str] = mapped_column(String(255), nullable=False)
+    justification: Mapped[str] = mapped_column(Text, nullable=False)
+    compensating_controls: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    approved_by: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="ACTIVE"
+    )  # ACTIVE, EXPIRED, REVOKED
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utc_now_naive)
+
+
+class ITSMTicket(Base):
+    __tablename__ = "itsm_tickets"
+
+    ticket_id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    vulnerability_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("vulnerabilities.vulnerability_id"), nullable=False
+    )
+    system_name: Mapped[str] = mapped_column(String(64), nullable=False)  # JIRA, SERVICENOW
+    external_ticket_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    ticket_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(64), nullable=False, default="OPEN")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utc_now_naive)

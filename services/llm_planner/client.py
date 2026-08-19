@@ -1,11 +1,14 @@
 import json
-from typing import Any, Dict, List
+import time
+from typing import Any, Dict, List, Optional
 
 import httpx
 
 from services.llm_planner.config import LLMPlannerLimits
 from services.llm_planner.firewall import CognitiveAIFirewall
 from services.llm_planner.prompts import REMEDIATION_PLANNER_SYSTEM_PROMPT
+from services.llm_planner.providers import MultiProviderPlanner
+from services.llm_planner.telemetry import record_ai_activity
 from services.models.domain_schemas import RemediationPlanSchema
 
 OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
@@ -13,7 +16,8 @@ OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
 
 class LLMPlannerClient:
     """
-    LLM Planner Client supporting OpenAI (real API) and a deterministic mock fallback.
+    LLM Planner Client supporting OpenAI (real API), a multi-provider failover
+    chain, and a deterministic mock fallback.
     Enforces bounded guardrails via CognitiveAIFirewall and LLMPlannerLimits.
     """
 
@@ -22,39 +26,74 @@ class LLMPlannerClient:
         api_key: str = "",
         model_name: str = "",
         limits: LLMPlannerLimits | None = None,
+        provider_chain: MultiProviderPlanner | None = None,
     ):
         self.api_key = api_key
         self.limits = limits or LLMPlannerLimits()
         self.model_name = model_name or self.limits.model
+        self.provider_chain = provider_chain
 
     async def generate_remediation_plan(
-        self, asset_info: Dict[str, Any], vulnerabilities: List[Dict[str, Any]]
+        self,
+        asset_info: Dict[str, Any],
+        vulnerabilities: List[Dict[str, Any]],
+        db=None,
+        vulnerability_id: Optional[str] = None,
     ) -> RemediationPlanSchema:
         if not vulnerabilities:
             raise ValueError(
                 "AI Firewall blocked plan generation: no vulnerabilities provided in context."
             )
 
+        start = time.monotonic()
+
         # 1. Sanitize context via Cognitive AI Firewall
         context_str = f"Asset: {asset_info}\nVulnerabilities: {vulnerabilities}"
         sanitized_context = CognitiveAIFirewall.sanitize_input_context(context_str)
-        if "[REDACTED_ATTEMPT]" in sanitized_context:
+        sanitizer_passed = "[REDACTED_ATTEMPT]" not in sanitized_context
+        if not sanitizer_passed:
             raise ValueError(
                 "AI Firewall blocked plan generation: prompt injection attempt detected "
                 "in vulnerability context."
             )
 
-        # 2. Produce raw plan JSON from the provider (real API or deterministic mock)
-        if self.api_key:
+        # 2. Produce raw plan JSON from the provider chain, OpenAI, or deterministic mock
+        provider_name = "mock"
+        if self.provider_chain is not None:
+            raw_plan = await self.provider_chain.generate_remediation_plan(
+                REMEDIATION_PLANNER_SYSTEM_PROMPT,
+                self._build_user_prompt(sanitized_context),
+            )
+            provider_name = (
+                self.provider_chain.providers[0].name if self.provider_chain.providers else "chain"
+            )
+        elif self.api_key:
             raw_plan = await self._call_openai(sanitized_context)
+            provider_name = "openai"
         else:
             raw_plan = self._mock_plan(asset_info, vulnerabilities)
+
+        latency_ms = round((time.monotonic() - start) * 1000.0, 2)
 
         # 3. Enforce the full Cognitive AI Firewall pipeline
         validated_plan = CognitiveAIFirewall.validate_plan_schema(raw_plan)
         CognitiveAIFirewall.check_plan_plausibility(
             validated_plan, vulnerabilities, limits=self.limits
         )
+
+        # 4. Persist AI activity telemetry when a DB session is provided
+        if db is not None:
+            await record_ai_activity(
+                db,
+                provider=provider_name,
+                model=self.model_name,
+                prompt_tokens=0,
+                completion_tokens=0,
+                latency_ms=latency_ms,
+                sanitizer_passed=sanitizer_passed,
+                prompt_text=sanitized_context,
+                vulnerability_id=vulnerability_id,
+            )
         return validated_plan
 
     def _build_user_prompt(self, context: str) -> str:

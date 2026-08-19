@@ -8,6 +8,7 @@ from services.control_plane.core.db import get_db
 from services.llm_planner.client import LLMPlannerClient
 from services.models.db_models import Asset, RemediationPlan, Vulnerability
 from services.models.domain_schemas import RemediationPlanCreate, RemediationPlanResponse
+from services.observability.metrics import record_opa_evaluation, record_remediation_plan
 from services.policy_engine.client import OPAPolicyClient
 
 router = APIRouter(prefix="/remediation", tags=["Remediation Plans"])
@@ -35,7 +36,7 @@ async def generate_plan(payload: RemediationPlanCreate, db: AsyncSession = Depen
                 }
             )
 
-    # 1. Generate bounded plan via LLM & Cognitive AI Firewall
+    # 1. Generate bounded plan via LLM & Cognitive AI Firewall (records AI telemetry)
     plan_schema = await llm_client.generate_remediation_plan(
         asset_info={
             "hostname": asset.hostname,
@@ -44,6 +45,8 @@ async def generate_plan(payload: RemediationPlanCreate, db: AsyncSession = Depen
             "criticality_score": asset.criticality_score,
         },
         vulnerabilities=vuln_records,
+        db=db,
+        vulnerability_id=str(payload.vulnerability_ids[0]) if payload.vulnerability_ids else None,
     )
 
     # 2. Evaluate plan with OPA Policy Engine
@@ -57,7 +60,10 @@ async def generate_plan(payload: RemediationPlanCreate, db: AsyncSession = Depen
         plan_payload=plan_schema.model_dump(),
     )
 
+    record_opa_evaluation("allowed" if opa_res.get("allowed") else "denied")
+
     status = "PENDING_APPROVAL" if opa_res.get("allowed") else "REJECTED_BY_POLICY"
+    record_remediation_plan(status)
 
     plan = RemediationPlan(
         asset_id=asset.asset_id,

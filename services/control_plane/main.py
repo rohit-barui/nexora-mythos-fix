@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from services.control_plane.api.v1.agents import router as agents_router
+from services.control_plane.api.v1.ai_telemetry import router as ai_telemetry_router
 from services.control_plane.api.v1.approvals import router as approvals_router
 from services.control_plane.api.v1.assets import router as assets_router
 from services.control_plane.api.v1.audit import router as audit_router
@@ -68,6 +69,7 @@ async def health_check():
 
 # Mount Routers under API_V1_STR
 app.include_router(agents_router, prefix=settings.API_V1_STR)
+app.include_router(ai_telemetry_router, prefix=settings.API_V1_STR)
 app.include_router(assets_router, prefix=settings.API_V1_STR)
 app.include_router(vulns_router, prefix=settings.API_V1_STR)
 app.include_router(remediation_router, prefix=settings.API_V1_STR)

@@ -10,7 +10,7 @@ from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from prometheus_client import Counter, Histogram, generate_latest
+from prometheus_client import Counter, Gauge, Histogram, generate_latest
 from starlette.responses import Response
 
 # Prometheus metrics
@@ -36,6 +36,46 @@ VULNERABILITIES_INGESTED = Counter(
     "nexora_vulnerabilities_ingested_total",
     "Total vulnerabilities ingested",
     ["scanner"],
+)
+
+SCANS_INGESTED_TOTAL = Counter(
+    "nexora_scans_ingested_total",
+    "Total vulnerability scans ingested",
+    ["scanner"],
+)
+
+REMEDIATION_PLANS_TOTAL = Counter(
+    "nexora_remediation_plans_total",
+    "Total remediation plans generated",
+    ["status"],
+)
+
+PATCH_EXECUTION_DURATION = Histogram(
+    "nexora_patch_execution_duration_seconds",
+    "Patch execution duration in seconds",
+    ["execution_type"],
+)
+
+OPA_EVALUATIONS_TOTAL = Counter(
+    "nexora_opa_evaluations_total",
+    "Total OPA policy evaluations",
+    ["result"],
+)
+
+AUDIT_CHAIN_VALID = Gauge(
+    "nexora_audit_chain_valid",
+    "Audit Merkle chain validity (1 valid, 0 tampered)",
+)
+
+AI_TOKENS_TOTAL = Counter(
+    "nexora_ai_tokens_total",
+    "Total AI tokens consumed",
+    ["provider", "model", "token_type"],
+)
+
+AI_COST_DOLLARS_TOTAL = Counter(
+    "nexora_ai_cost_dollars_total",
+    "Total estimated AI cost in USD",
 )
 
 
@@ -99,3 +139,38 @@ def record_patch_job(status: str) -> None:
 def record_vulnerability_ingested(scanner: str) -> None:
     """Record vulnerability ingestion metric."""
     VULNERABILITIES_INGESTED.labels(scanner=scanner).inc()
+
+
+def record_scan_ingested(scanner: str) -> None:
+    """Record scan ingestion metric (blueprint Pillar 15)."""
+    SCANS_INGESTED_TOTAL.labels(scanner=scanner).inc()
+
+
+def record_remediation_plan(status: str) -> None:
+    """Record remediation plan generation metric."""
+    REMEDIATION_PLANS_TOTAL.labels(status=status).inc()
+
+
+def record_patch_execution_duration(execution_type: str, duration_seconds: float) -> None:
+    """Record patch execution duration histogram."""
+    PATCH_EXECUTION_DURATION.labels(execution_type=execution_type).observe(duration_seconds)
+
+
+def record_opa_evaluation(result: str) -> None:
+    """Record OPA policy evaluation metric (result: allowed|denied|error)."""
+    OPA_EVALUATIONS_TOTAL.labels(result=result).inc()
+
+
+def set_audit_chain_valid(valid: bool) -> None:
+    """Set audit Merkle chain validity gauge (1 valid, 0 tampered)."""
+    AUDIT_CHAIN_VALID.set(1 if valid else 0)
+
+
+def record_ai_tokens(provider: str, model: str, token_type: str, count: int) -> None:
+    """Record AI token consumption metric (token_type: prompt|completion)."""
+    AI_TOKENS_TOTAL.labels(provider=provider, model=model, token_type=token_type).inc(count)
+
+
+def record_ai_cost(cost_usd: float) -> None:
+    """Record estimated AI cost in USD."""
+    AI_COST_DOLLARS_TOTAL.inc(cost_usd)
