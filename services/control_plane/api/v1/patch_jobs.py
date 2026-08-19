@@ -1,3 +1,4 @@
+import time
 import uuid
 from datetime import UTC, datetime
 from typing import List
@@ -10,6 +11,7 @@ from services.audit.ledger import AuditLedger
 from services.control_plane.core.db import get_db
 from services.models.db_models import Asset, PatchJob, RemediationPlan
 from services.models.domain_schemas import PatchJobCreate, PatchJobExecutionResult, PatchJobResponse
+from services.observability.metrics import record_patch_execution_duration, record_patch_job
 from services.orchestrator.engine import OrchestrationEngine
 
 router = APIRouter(prefix="/patch-jobs", tags=["Patch Jobs"])
@@ -76,14 +78,18 @@ async def execute_patch_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db
     job.started_at = datetime.now(UTC).replace(tzinfo=None)
     await db.commit()
 
+    exec_start = time.monotonic()
     result = await orchestrator.run_remediation(
         host=asset.hostname,
         os_type=asset.os_type,
         actions=actions,
         credentials={},
     )
+    exec_duration = time.monotonic() - exec_start
+    record_patch_execution_duration(job.execution_type, exec_duration)
 
     job.status = result["overall_status"]
+    record_patch_job(job.status)
     job.execution_logs = [log for action in result["actions"] for log in action.get("logs", [])]
     job.snapshot_metadata = {
         action.get("target_package"): action.get("snapshot_metadata", {})

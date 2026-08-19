@@ -9,7 +9,9 @@ from services.control_plane.core.db import get_db
 from services.ingestion.normalizer import IngestionNormalizer
 from services.models.db_models import Asset, Vulnerability
 from services.models.domain_schemas import VulnerabilityResponse
+from services.observability.metrics import record_scan_ingested, record_vulnerability_ingested
 from services.risk_engine.scorer import RiskScorer
+from services.risk_engine.sla_tracker import compute_sla_deadline
 
 router = APIRouter(prefix="/vulnerabilities", tags=["Vulnerabilities"])
 normalizer = IngestionNormalizer()
@@ -51,14 +53,17 @@ async def ingest_scan_payload(
             scanner_source=scanner_type,
             raw_metadata=item.raw_metadata,
             status="OPEN",
+            sla_deadline=compute_sla_deadline(risk_score, item.is_known_exploited),
         )
         db.add(vuln)
         created_vulns.append(vuln)
+        record_vulnerability_ingested(scanner_type)
 
     await db.commit()
     for v in created_vulns:
         await db.refresh(v)
 
+    record_scan_ingested(scanner_type)
     return created_vulns
 
 

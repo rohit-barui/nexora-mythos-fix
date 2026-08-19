@@ -5,6 +5,8 @@ from typing import Any, Dict, List
 
 import httpx
 
+from services.observability.metrics import record_opa_evaluation
+
 
 class OPAPolicyClient:
     """
@@ -59,8 +61,10 @@ class OPAPolicyClient:
                 )
                 if response.status_code == 200:
                     result = response.json().get("result", {})
+                    allowed = result.get("allow", False)
+                    record_opa_evaluation("allowed" if allowed else "denied")
                     return {
-                        "allowed": result.get("allow", False),
+                        "allowed": allowed,
                         "require_escalation": result.get("require_escalation", False),
                         "violations": result.get("violations", []),
                         "evaluated_at": datetime.datetime.now(datetime.UTC).isoformat(),
@@ -107,6 +111,7 @@ class OPAPolicyClient:
             a.get("target_package") == "linux-image-generic" for a in actions
         )
 
+        record_opa_evaluation("allowed" if allowed else "denied")
         return {
             "allowed": allowed,
             "require_escalation": require_escalated,
