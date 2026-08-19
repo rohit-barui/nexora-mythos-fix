@@ -43,6 +43,47 @@ async def list_patch_jobs(db: AsyncSession = Depends(get_db)):
     return result.scalars().all()
 
 
+@router.post("/{job_id}/rollback", response_model=PatchJobResponse)
+async def rollback_patch_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Trigger emergency rollback of a patch job."""
+    job = await db.get(PatchJob, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Patch Job not found")
+    if not job.rollback_available:
+        raise HTTPException(status_code=409, detail="Job rollback not available")
+
+    plan = await db.get(RemediationPlan, job.plan_id)
+    rollback_commands = (
+        [
+            action.get("rollback_command_template")
+            for action in (plan.plan_payload or {}).get("actions", [])
+            if action.get("rollback_command_template")
+        ]
+        if plan
+        else []
+    )
+
+    job.status = "ROLLED_BACK"
+    job.execution_logs = [*job.execution_logs, "Emergency rollback triggered"]
+    job.snapshot_metadata = {**job.snapshot_metadata, "rollback": {"commands": rollback_commands}}
+    job.completed_at = datetime.now(UTC).replace(tzinfo=None)
+    await db.commit()
+
+    await AuditLedger.log_event(
+        db,
+        actor="Operator",
+        action="PATCH_ROLLED_BACK",
+        payload={
+            "job_id": str(job.job_id),
+            "plan_id": str(job.plan_id),
+            "rollback_commands": rollback_commands,
+        },
+    )
+    record_patch_job("ROLLED_BACK")
+    await db.refresh(job)
+    return job
+
+
 @router.get("/{job_id}", response_model=PatchJobResponse)
 async def get_patch_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     job = await db.get(PatchJob, job_id)
