@@ -16,6 +16,10 @@ license = {text = "Apache-2.0"}
 authors = [
     {name = "Nexora Team", email = "dev@nexora.io"}
 ]
+
+[project.scripts]
+nexora = "services.cli:main"
+
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Information Technology",

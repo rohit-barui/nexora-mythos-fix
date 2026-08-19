@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -93,7 +93,12 @@ async def get_patch_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/{job_id}/execute", response_model=PatchJobExecutionResult)
-async def execute_patch_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def execute_patch_job(
+    job_id: uuid.UUID,
+    canary: bool = Query(False, description="Enable progressive canary rollout"),
+    available_hosts: str = Query("", description="Comma-separated canary host list"),
+    db: AsyncSession = Depends(get_db),
+):
     job = await db.get(PatchJob, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Patch Job not found")
@@ -120,11 +125,14 @@ async def execute_patch_job(job_id: uuid.UUID, db: AsyncSession = Depends(get_db
     await db.commit()
 
     exec_start = time.monotonic()
+    hosts = [h.strip() for h in available_hosts.split(",") if h.strip()] or None
     result = await orchestrator.run_remediation(
         host=asset.hostname,
         os_type=asset.os_type,
         actions=actions,
         credentials={},
+        canary_rings=canary,
+        available_hosts=hosts,
     )
     exec_duration = time.monotonic() - exec_start
     record_patch_execution_duration(job.execution_type, exec_duration)
