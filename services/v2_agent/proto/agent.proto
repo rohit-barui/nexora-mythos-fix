@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package nexora.agent.v2;
+
+service AgentService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+}
+
+message RegisterRequest {
+  string agent_id = 1;
+  string version = 2;
+  repeated string capabilities = 3;
+}
+
+message RegisterResponse {
+  bool accepted = 1;
+  string agent_id = 2;
+  string server_version = 3;
+}
+
+message HeartbeatRequest {
+  string agent_id = 1;
+  string status = 2;
+  float cpu_percent = 3;
+  float memory_percent = 4;
+  float disk_percent = 5;
+  int64 timestamp_ms = 6;
+}
+
+message HeartbeatResponse {
+  bool received = 1;
+  string message = 2;
+}
+
+message ExecuteRequest {
+  string agent_id = 1;
+  string action = 2;
+  string package = 3;
+  string payload = 4;
+}
+
+message ExecuteResponse {
+  string status = 1;
+  string action = 2;
+  string message = 3;
+  string execution_id = 4;
+}
+
+message GetStatusRequest {
+  string agent_id = 1;
+}
+
+message GetStatusResponse {
+  string agent_id = 1;
+  string status = 2;
+  string version = 3;
+  int64 uptime_seconds = 4;
+}
