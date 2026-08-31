@@ -9,20 +9,41 @@ include = ["services*", "tests*"]
 [project]
 name = "nexora-mythos-fix"
 version = "1.0.0"
-description = "Governed Autonomous Vulnerability Remediation Platform"
+description = "Governed Autonomous Vulnerability Remediation & Threat Immunity Control Plane"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Nexora Team", email = "dev@nexora.io"}
+    {name = "Rohit Barui", email = "dev@nexora.io"}
+]
+keywords = [
+    "vulnerability-remediation",
+    "security-control-plane",
+    "opa-policy",
+    "rego",
+    "temporal-workflows",
+    "autonomous-security",
+    "patch-management",
+    "threat-immunity",
+    "devsecops",
+    "container-security",
+    "cloud-security",
+    "risk-engine",
+    "hitl-approvals",
+    "grpc-mtls"
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Security",
+    "Topic :: System :: Systems Administration",
+    "Operating System :: OS Independent",
 ]
+
 dependencies = [
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.28.0",
@@ -47,6 +68,14 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.44b0",
     "prometheus-client>=0.20.0"
 ]
+
+[project.urls]
+Homepage = "https://github.com/rohit-barui/Nexora"
+Repository = "https://github.com/rohit-barui/Nexora"
+Documentation = "https://github.com/rohit-barui/Nexora#readme"
+Changelog = "https://github.com/rohit-barui/Nexora/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/rohit-barui/Nexora/issues"
+"PyPI Release" = "https://pypi.org/project/nexora-mythos-fix/"
 
 [project.scripts]
 nexora = "services.cli:main"
