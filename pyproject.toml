@@ -7,7 +7,7 @@ where = ["."]
 include = ["services*", "tests*"]
 
 [project]
-name = "nexora"
+name = "nexora-mythos-fix"
 version = "1.0.0"
 description = "Governed Autonomous Vulnerability Remediation Platform"
 readme = "README.md"
