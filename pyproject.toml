@@ -16,10 +16,6 @@ license = {text = "Apache-2.0"}
 authors = [
     {name = "Nexora Team", email = "dev@nexora.io"}
 ]
-
-[project.scripts]
-nexora = "services.cli:main"
-
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Information Technology",
@@ -27,7 +23,6 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Topic :: Security",
 ]
-
 dependencies = [
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.28.0",
@@ -52,6 +47,9 @@ dependencies = [
     "opentelemetry-instrumentation-fastapi>=0.44b0",
     "prometheus-client>=0.20.0"
 ]
+
+[project.scripts]
+nexora = "services.cli:main"
 
 [project.optional-dependencies]
 dev = [
