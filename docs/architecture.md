@@ -101,3 +101,7 @@ $$\text{RiskScore} = (\text{CVSS} \times 0.30) + (\text{EPSS} \times 0.25) + (\t
 ### 7. Immutable Cryptographic Merkle Audit Trail
 - Every state transition emits an immutable `AuditEvent`.
 - SHA-256 hash of event $N$ includes hash of event $N-1$ (Merkle chain), preventing silent log manipulation.
+
+### 8. CI/CD & PyPI OIDC Trusted Publishing
+- **CI Pipeline** (`.github/workflows/ci.yml`): Runs formatting (`black`, `isort`), linting (`flake8`), pre-commit hooks, and test suite execution (`pytest`) on every commit/PR.
+- **PyPI Release Pipeline** (`.github/workflows/publish.yml`): OIDC-trusted publishing (`pypa/gh-action-pypi-publish@release/v1`) triggered on GitHub Release or manual `workflow_dispatch` to package and deploy [`nexora-mythos-fix`](https://pypi.org/project/nexora-mythos-fix/).

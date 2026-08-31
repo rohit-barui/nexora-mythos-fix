@@ -2,6 +2,7 @@
 ## Governed Autonomous Vulnerability Remediation & Threat Immunity Control Plane (2026–2036+)
 
 > **Document Version**: 2.0.0-ENTERPRISE
+> **PyPI Package**: [`nexora-mythos-fix`](https://pypi.org/project/nexora-mythos-fix/)
 > **Target Engine**: OpenCode / VSCode / Custom Agentic AI Builders
 > **Tech Stack**: Python 3.11+, FastAPI, Pydantic v2, OPA (Rego), Temporal.io, PostgreSQL, Async SQLAlchemy 2.0, Redis (Redlock), Alembic, Docker & Docker Compose, Microsoft Teams (Adaptive Cards) & Microsoft Outlook (Actionable Messages), Prometheus, OpenTelemetry, HashiCorp Vault.
 

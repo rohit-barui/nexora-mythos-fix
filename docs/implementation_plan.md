@@ -179,8 +179,8 @@ Nexora/
 - **Rescan Verifier**: Verification pass/fail with retry semantics
 
 ### Coverage & Quality Gates
-- **190 tests passing**
-- **84.6% coverage** (gate: >= 50%)
+- **190 tests passing** (100%)
+- **85% coverage** (gate: >= 50%)
 - **Zero deprecation warnings** (`-W error::DeprecationWarning`)
 - **Lint clean**: black, isort, flake8 (max-line-length=100)
 

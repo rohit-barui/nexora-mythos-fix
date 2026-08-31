@@ -1,12 +1,13 @@
 # Nexora (Mythos Fix) — Governed Autonomous Vulnerability Remediation Platform
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![PyPI](https://img.shields.io/pypi/v/nexora-mythos-fix.svg)
 ![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)
 ![Security](https://img.shields.io/badge/governance-OPA%20%2B%20HITL-orange.svg)
 ![Orchestration](https://img.shields.io/badge/orchestration-Temporal.io-purple.svg)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)
 
-**Nexora (Mythos Fix)** is an enterprise-grade, **governed autonomous vulnerability remediation control plane** engineered to remediate security vulnerabilities across heterogeneous cloud, container, on-premises, and hybrid infrastructure.
+**Nexora (Mythos Fix)** is an enterprise-grade, **governed autonomous vulnerability remediation control plane** engineered to remediate security vulnerabilities across heterogeneous cloud, container, on-premises, and hybrid infrastructure. Published on PyPI as [`nexora-mythos-fix`](https://pypi.org/project/nexora-mythos-fix/).
 
 ---
 
@@ -100,11 +101,17 @@ Nexora/
 
 ---
 
-## 🚀 Quick Start (Local Setup)
+## 🚀 Quick Start & Installation
 
+### Option A: Install from PyPI (Recommended)
+```bash
+pip install nexora-mythos-fix
+```
+
+### Option B: Local Setup & Source Build
 ```bash
 # Clone the repository
-git clone https://github.com/rohit-barui/nexora-mythos-fix.git
+git clone https://github.com/rohit-barui/Nexora.git
 cd Nexora
 
 # Create Python Virtual Environment & Install Dependencies
@@ -191,4 +198,4 @@ All 11 phases of the master blueprint are implemented and tested:
 | 10 | Execution & Ops (SSM, containers, canary+Redlock, secrets, rescan, CLI) | ✅ Complete |
 | 11 | V2 Agent gRPC/mTLS + A/B dual-slot rollback | ✅ Complete |
 
-**Verification**: 190 tests passing, 84.6% coverage, zero deprecation warnings, lint clean.
+**Verification**: 190 tests passing (100%), 85% coverage, zero deprecation warnings, lint clean.
