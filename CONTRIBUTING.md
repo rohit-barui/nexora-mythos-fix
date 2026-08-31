@@ -29,8 +29,8 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 ```bash
 # Clone your fork
-git clone https://github.com/your-username/Nexora.git
-cd Nexora
+git clone https://github.com/rohit-barui/nexora-mythos-fix.git
+cd nexora-mythos-fix
 
 # Create virtual environment
 python -m venv venv

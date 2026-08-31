@@ -104,7 +104,7 @@ Nexora/
 
 ```bash
 # Clone the repository
-git clone https://github.com/rohit-barui/Nexora.git
+git clone https://github.com/rohit-barui/nexora-mythos-fix.git
 cd Nexora
 
 # Create Python Virtual Environment & Install Dependencies
