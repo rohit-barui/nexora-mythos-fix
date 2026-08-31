@@ -8,7 +8,7 @@ include = ["services*", "tests*"]
 
 [project]
 name = "nexora-mythos-fix"
-version = "1.0.0"
+version = "1.0.1"
 description = "Governed Autonomous Vulnerability Remediation & Threat Immunity Control Plane"
 readme = "README.md"
 requires-python = ">=3.11"
